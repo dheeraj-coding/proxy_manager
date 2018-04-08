@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 )
 
 var addr string = "172.16.19.10"
@@ -53,7 +55,6 @@ func proxy_on() {
 	tmp, err := os.OpenFile("/tmp/temp.txt", os.O_RDWR|os.O_CREATE, 0644)
 	writer := bufio.NewWriter(tmp)
 	for _, line := range cache {
-		fmt.Println(line)
 		_, err := writer.WriteString(line)
 		if err != nil {
 			fmt.Print(err)
@@ -61,14 +62,96 @@ func proxy_on() {
 	}
 	writer.Flush()
 
+	apt_write_cmd:=exec.Command("sudo","mv","/tmp/temp.txt","/etc/apt/apt.conf")
+	apt_write_cmd.Run()
+
+	proxies=proxies[:0]
+
+	for _, val := range kind {
+		proxies = append(proxies, fmt.Sprintf("%v_proxy=\"http://%v/\"\n", val, proxy))
+	}
+	file_profile, err := os.Open("/etc/environment")
+	defer file_profile.Close()
+	if err != nil {
+		fmt.Print(err)
+	}
+	scanner_profile := bufio.NewScanner(file_profile)
+	cache =cache[:0]
+	for scanner.Scan() {
+		cache = append(cache, scanner_profile.Text())
+	}
+	for _, val := range proxies {
+		cache = append(cache, val)
+	}
+	tmp_profile, err := os.OpenFile("/tmp/temp.txt", os.O_RDWR|os.O_CREATE, 0644)
+	writer_profile := bufio.NewWriter(tmp_profile)
+	for _, line := range cache {
+		_, err := writer_profile.WriteString(line)
+		if err != nil {
+			fmt.Print(err)
+		}
+	}
+	writer_profile.Flush()
+
+	profile_write_cmd:=exec.Command("sudo","mv","/tmp/temp.txt","/etc/environment")
+
+	profile_write_cmd.Run()
+
+
 }
 func proxy_off() {
-	if addr == "" || port == "" {
-		print_help()
-		return
+	apt_conf,_:=os.Open("/etc/apt/apt.conf")
+	apt_conf_reader:=bufio.NewScanner(apt_conf)
+	cache:=make([]string,10)
+	for apt_conf_reader.Scan(){
+		cache=append(cache,apt_conf_reader.Text())
 	}
-	proxy := fmt.Sprintf("%v:%v", addr, port)
-	fmt.Print(proxy)
+	outp:=make([]string,10)
+	for i := range cache{
+		if(!strings.Contains(cache[i],"proxy")){
+			outp=append(outp,cache[i])
+		}
+	}
+	apt_conf_temp,_:=os.OpenFile("/tmp/temp.txt",os.O_RDWR|os.O_CREATE,0644)
+	apt_conf_writer:=bufio.NewWriter(apt_conf_temp)
+	for _,val := range outp{
+		_,err:=apt_conf_writer.WriteString(val)
+		if err!=nil{
+			fmt.Print(err)
+		}
+	}
+	apt_conf_writer.Flush()
+
+	apt_cmd:=exec.Command("sudo","mv","/tmp/temp.txt","/etc/apt/apt.conf")
+	apt_cmd.Run()
+
+	fmt.Println("Apt settings resetted")
+
+	env_conf,_:=os.Open("/etc/environment")
+	env_conf_reader:=bufio.NewScanner(env_conf)
+	cache=cache[:0]
+	for env_conf_reader.Scan(){
+		cache=append(cache,env_conf_reader.Text())
+	}
+	outp=outp[:0]
+	for i := range cache{
+		if(!strings.Contains(cache[i],"proxy")){
+			outp=append(outp,cache[i])
+		}
+	}
+	env_conf_temp,_:=os.OpenFile("/tmp/temp.txt",os.O_RDWR|os.O_CREATE,0644)
+	env_conf_writer:=bufio.NewWriter(env_conf_temp)
+	for _,val := range outp{
+		_,err:=env_conf_writer.WriteString(val)
+		if err!=nil{
+			fmt.Print(err)
+		}
+	}
+	env_conf_writer.Flush()
+
+	env_cmd:=exec.Command("sudo","mv","/tmp/temp.txt","/etc/environment")
+	env_cmd.Run()
+	fmt.Println("Environment settings resetted")
 }
 func main() {
 	if len(os.Args) <= 1 {
