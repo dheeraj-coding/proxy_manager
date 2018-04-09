@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-var addr string = "172.16.19.10"
-var port string = "80"
+var addr string = ""
+var port string = ""
 var no_proxy string
 var kind []string = []string{"https", "http", "socks", "ftp"}
 
@@ -34,6 +34,8 @@ func proxy_on() {
 		print_help()
 		return
 	}
+
+
 	proxy := fmt.Sprintf("%v:%v", addr, port)
 	var proxies []string
 	for _, val := range kind {
@@ -69,7 +71,10 @@ func proxy_on() {
 
 	for _, val := range kind {
 		proxies = append(proxies, fmt.Sprintf("%v_proxy=\"http://%v/\"\n", val, proxy))
+		proxies = append(proxies, fmt.Sprintf("%v_PROXY=\"http://%v/\"\n", strings.ToUpper(val), proxy))
 	}
+	proxies=append(proxies,"no_proxy=localhost,127.0.0.0/8")
+	proxies=append(proxies,"NO_PROXY=localhost,127.0.0.0/8")
 	file_profile, err := os.Open("/etc/environment")
 	defer file_profile.Close()
 	if err != nil {
@@ -89,6 +94,7 @@ func proxy_on() {
 		_, err := writer_profile.WriteString(line)
 		if err != nil {
 			fmt.Print(err)
+			return
 		}
 	}
 	writer_profile.Flush()
@@ -97,7 +103,19 @@ func proxy_on() {
 
 	profile_write_cmd.Run()
 
-
+//	GTK 3 applications
+	gtk_cmd:=exec.Command("gsettings","set","org.gnome.system.proxy","mode","'manual'")
+	gtk_cmd.Run()
+	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy.http","host",addr)
+	gtk_cmd.Run()
+	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy.http","port",port)
+	gtk_cmd.Run()
+	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy.https","host",addr)
+	gtk_cmd.Run()
+	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy.https","port",port)
+	gtk_cmd.Run()
+	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy","ignore-hosts","localhost","127.0.0.0/8")
+	gtk_cmd.Run()
 }
 func proxy_off() {
 	apt_conf,_:=os.Open("/etc/apt/apt.conf")
@@ -108,7 +126,7 @@ func proxy_off() {
 	}
 	outp:=make([]string,10)
 	for i := range cache{
-		if(!strings.Contains(cache[i],"proxy")){
+		if !strings.Contains(strings.ToLower(cache[i]),"proxy") {
 			outp=append(outp,cache[i])
 		}
 	}
@@ -135,15 +153,15 @@ func proxy_off() {
 	}
 	outp=outp[:0]
 	for i := range cache{
-		if(!strings.Contains(cache[i],"proxy")){
+		if !strings.Contains(strings.ToLower(cache[i]),"proxy") {
 			outp=append(outp,cache[i])
 		}
 	}
 	env_conf_temp,_:=os.OpenFile("/tmp/temp.txt",os.O_RDWR|os.O_CREATE,0644)
 	env_conf_writer:=bufio.NewWriter(env_conf_temp)
-	for _,val := range outp{
-		_,err:=env_conf_writer.WriteString(val)
-		if err!=nil{
+	for _,val := range outp {
+		_, err := env_conf_writer.WriteString(val)
+		if err != nil {
 			fmt.Print(err)
 		}
 	}
@@ -152,6 +170,9 @@ func proxy_off() {
 	env_cmd:=exec.Command("sudo","mv","/tmp/temp.txt","/etc/environment")
 	env_cmd.Run()
 	fmt.Println("Environment settings resetted")
+
+	gtk_cmd:=exec.Command("gsettings set org.gnome.system.proxy","mode","'none'")
+	gtk_cmd.Run()
 }
 func main() {
 	if len(os.Args) <= 1 {
