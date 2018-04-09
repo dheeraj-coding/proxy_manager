@@ -104,17 +104,17 @@ func proxy_on() {
 	profile_write_cmd.Run()
 
 //	GTK 3 applications
-	gtk_cmd:=exec.Command("gsettings","set","org.gnome.system.proxy","mode","'manual'")
+	gtk_cmd:=exec.Command("sudo","gsettings","set","org.gnome.system.proxy","mode","'manual'")
 	gtk_cmd.Run()
-	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy.http","host",addr)
+	gtk_cmd=exec.Command("sudo","gsettings","set","org.gnome.system.proxy.http","host",addr)
 	gtk_cmd.Run()
-	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy.http","port",port)
+	gtk_cmd=exec.Command("sudo","gsettings","set","org.gnome.system.proxy.http","port",port)
 	gtk_cmd.Run()
-	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy.https","host",addr)
+	gtk_cmd=exec.Command("sudo","gsettings","set","org.gnome.system.proxy.https","host",addr)
 	gtk_cmd.Run()
-	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy.https","port",port)
+	gtk_cmd=exec.Command("sudo","gsettings","set","org.gnome.system.proxy.https","port",port)
 	gtk_cmd.Run()
-	gtk_cmd=exec.Command("gsettings","set","org.gnome.system.proxy","ignore-hosts","localhost","127.0.0.0/8")
+	gtk_cmd=exec.Command("sudo","gsettings","set","org.gnome.system.proxy","ignore-hosts","localhost","127.0.0.0/8")
 	gtk_cmd.Run()
 }
 func proxy_off() {
@@ -171,8 +171,14 @@ func proxy_off() {
 	env_cmd.Run()
 	fmt.Println("Environment settings resetted")
 
-	gtk_cmd:=exec.Command("gsettings set org.gnome.system.proxy","mode","'none'")
-	gtk_cmd.Run()
+	gtk_cmd:=exec.Command("gsettings","set", "org.gnome.system.proxy","mode","'none'")
+
+	err:=gtk_cmd.Run()
+
+	if err!=nil{
+		fmt.Print(err)
+	}
+	fmt.Println("GTK settings resetted")
 }
 func main() {
 	if len(os.Args) <= 1 {
